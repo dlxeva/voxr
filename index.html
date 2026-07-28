@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>合成旁白节奏检查｜本地 SRT 复盘</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <p class="eyebrow" id="privacy-kicker">本地处理 · 合成旁白质检 · Beta</p>
+      <div class="locale-switch" aria-label="Language">
+        <button type="button" data-locale="zh" aria-pressed="true">中文</button>
+        <button type="button" data-locale="en" aria-pressed="false">EN</button>
+      </div>
+    </header>
+    <h1 id="page-title">合成旁白节奏检查</h1>
+    <p class="lede" id="page-lede">导入配音生成后的 SRT，定位需要重配的时间点，并导出可交给 AI 或 TTS 的修改包。适用于授权音色克隆与合成旁白的交付复盘。</p>
+    <section class="controls">
+      <label id="profile-label" class="purpose-select"><span class="field-kicker">第一步</span>配音用途
+        <select id="profile" aria-label="配音用途"></select>
+      </label>
+      <label class="drop" id="drop-zone"><span id="drop-copy">把 <code>.srt</code> 文件拖到这里</span>
+        <strong id="drop-action">或选择一个文件</strong>
+        <span class="drop-status" id="srt-status">尚未选择文件</span>
+        <input id="srt-file" type="file" accept=".srt,text/plain">
+      </label>
+      <label class="drop audio-drop" id="audio-drop-zone"><span>把对应的 <code>音频文件</code> 拖到这里</span>
+        <strong>用于本地 Audio QC Lite</strong>
+        <span class="drop-status" id="audio-status">可选：未选择音频</span>
+        <input id="audio-file" type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/*">
+      </label>
+    </section>
+    <label class="consent" id="audio-consent"><input id="audio-consent-input" type="checkbox">我确认拥有该音频及所涉声音的分析授权；文件仅在当前浏览器本地处理。</label>
+    <div class="workflow-actions" aria-live="polite"><p id="ready-state">先上传一份 SRT，再开始分析。</p><div><button id="analyze" class="button" type="button" disabled>开始分析</button><button id="reset" class="button button-secondary" type="button">清空</button></div></div>
+    <p id="error" class="notice" hidden></p>
+    <section id="empty" class="profile"><h2 id="empty-title">从本地开始</h2><p id="empty-copy">选择或拖入一个 SRT 文件。分析只在当前浏览器中运行，字幕内容不会离开你的设备。</p></section>
+    <section id="report" hidden>
+      <div class="section-title"><div><p class="eyebrow">分析结果</p><h2 id="filename"></h2></div><button id="export" class="button">导出重配 JSON</button></div>
+      <section id="action-plan" class="action-plan" aria-live="polite"></section>
+      <div id="metrics" class="grid"></div>
+      <section id="visual-report" class="visual-report" aria-label="节奏可视化报告"></section>
+      <section id="audio-report" class="audio-report" aria-live="polite"></section>
+      <div id="profile-guidance"></div>
+      <div id="panels" class="grid two-col"></div>
+      <div class="grid two-col">
+        <section class="profile"><p class="eyebrow">字幕间隔</p><ul id="pause-list"></ul></section>
+        <section class="profile"><p class="eyebrow">如何阅读结果</p><p>优先比较同一条旁白的不同生成版本。语速是时间轴测量值，留白的意图需要结合画面、句意和实际声音判断。</p>
+        <p class="hint">场景区间来自当前工具的制作复盘规则，用来提示回看片段，不构成研究结论、行业标准或自动判定。</p><p class="hint"><a href="https://github.com/dlxeva/voxr/blob/main/METHODOLOGY.md" target="_blank" rel="noopener">查看方法与边界</a></p></section>
+      </div>
+      <h2>字幕明细</h2>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>时间</th><th>时长</th><th>语速</th><th>文本</th></tr></thead><tbody id="rows"></tbody></table></div>
+    </section>
+  </main>
+  <script src="./analyzer-core.js"></script>
+  <script src="./audio-core.js"></script>
+  <script src="./profiles.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

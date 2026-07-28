@@ -1,0 +1,4 @@
+interface:
+  display_name: "Voxr Rhythm Review"
+  short_description: "Review SRT and audio QC results for AI voiceovers."
+  default_prompt: "Use $voxr-rhythm-review to review this SRT and audio QC report, then produce a prioritized regeneration brief."

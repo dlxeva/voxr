@@ -1,0 +1,15 @@
+# Finder and editor metadata
+.DS_Store
+.vscode/
+
+# Private or potentially licensed input media — keep outside the repository.
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.ogg
+*.opus
+
+# Files produced from a creator's own project.
+voice-iteration-package.json

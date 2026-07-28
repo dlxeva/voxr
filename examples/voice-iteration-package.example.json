@@ -1,0 +1,20 @@
+{
+  "format": "voxr.voice-iteration-package",
+  "version": 1,
+  "purpose": "explainer",
+  "source": {
+    "srt": "example.srt",
+    "audioIncluded": false
+  },
+  "summary": {
+    "reviewFocus": "Timing and pacing only; no LUFS, pitch, emotion, or voice-similarity claim."
+  },
+  "priorities": [
+    {
+      "timecode": "00:00:12,400–00:00:17,900",
+      "issue": "Fast active speech rate",
+      "action": "Slow this cue slightly or split it at a natural clause boundary.",
+      "prompt": "Keep the same authorized voice. Deliver this sentence at a calmer pace with one short natural pause at the clause boundary."
+    }
+  ]
+}
