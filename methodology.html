@@ -3,55 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>方法与边界｜合成旁白节奏检查</title>
+  <title>方法与边界 / Methodology｜Voxr</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="methodology-page">
     <p class="eyebrow">METHOD &amp; BOUNDARY</p>
-    <h1>方法与边界</h1>
-    <p class="lede">合成旁白节奏检查基于 SRT 文本和时间轴做制作复盘。它帮助定位值得重听、重写或重配的片段，不输出声学、情绪或可懂度的自动结论。</p>
+    <h1>方法与边界 <span lang="en">/ Methodology</span></h1>
+    <p class="lede">Voxr 基于 SRT 文本和时间轴做合成旁白的制作复盘；它帮助定位值得重听、重写或重配的片段，而不输出声学、情绪或可懂度的自动结论。</p>
+    <p class="lede" lang="en">Voxr reviews synthesized voiceover from SRT text and timing. It identifies clips worth replaying, rewriting, or regenerating; it does not produce automatic acoustic, emotion, or intelligibility conclusions.</p>
 
     <section class="profile">
-      <h2>当前测量什么</h2>
-      <p>工具读取 SRT 的时间戳和文本，计算字幕覆盖时长、完整时间线、字幕间隔、中文字符数与英文词数。据此显示 CPM、WPM、字幕覆盖外时间占比、间隔频率和相邻字幕的语速变化。</p>
-      <p>“字幕覆盖时长”和“字幕覆盖外时间”描述的是字幕时间轴，不能直接等同于实际开口时长和静音时长。</p>
+      <h2>当前测量什么 <span lang="en">/ What it measures</span></h2>
+      <p>计算字幕覆盖、完整时间线、字幕间隔、中文字符数和英文词数，并由此显示 CPM、WPM、覆盖外时间占比、间隔频率和相邻语速变化。“字幕覆盖”不等于真实开口，“覆盖外时间”不等于静音。</p>
+      <p lang="en">It calculates subtitle coverage, the full timeline, cue gaps, Chinese characters, and English words, then displays CPM, WPM, time outside coverage, gap frequency, and neighboring rate changes. Coverage is not actual spoken duration; time outside coverage is not silence.</p>
     </section>
 
     <section class="profile">
-      <h2>场景参考如何使用</h2>
-      <p>配音用途中的区间来自当前团队的制作复盘规则，用于标出值得回看的片段。时间线语速由字幕覆盖语速和字幕覆盖外时间占比推导，避免三组目标互相矛盾。</p>
-      <p>这些区间不是研究结论、行业标准或自动判定。建议将同一条旁白的不同生成版本放在一起比较。</p>
+      <h2>场景预设 <span lang="en">/ Delivery presets</span></h2>
+      <p>用途区间来自当前团队的制作复盘规则，作用是标出值得人工复查的片段。它们不是研究结论、行业标准或自动判定；最可靠的用法是比较同一用途下的多个生成版本。</p>
+      <p lang="en">Purpose ranges are current team production-review rules that flag clips for human review. They are not research conclusions, industry standards, or automatic judgments; compare multiple renders made for the same purpose.</p>
     </section>
 
     <section class="profile">
       <h2>Audio QC Lite</h2>
-      <p>确认拥有授权后，用户可在浏览器本地导入音频。试验功能显示 PCM 波形、样本峰值、RMS 平均能量、接近满刻度样本和与 SRT 时间线的时长差。</p>
+      <p>用户确认拥有授权后，可本地导入音频并查看 PCM 波形、样本峰值、RMS 能量、接近满刻度样本、时长差和低能量字幕区间。文件不会上传。</p>
+      <p lang="en">After authorization confirmation, users can locally inspect PCM waveform data, sample peak, RMS energy, near-full-scale samples, duration difference, and low-energy cues. Files are not uploaded.</p>
       <p>它不报告 LUFS、True Peak、音高、情绪、可懂度或音色相似度。</p>
+      <p lang="en">It does not report LUFS, true peak, pitch, emotion, intelligibility, or voice similarity.</p>
     </section>
 
     <section class="profile">
-      <h2>已知限制</h2>
+      <h2>方法来源与参考 <span lang="en">/ Design lineage and references</span></h2>
+      <p>Voxr 借鉴字幕时间轴质检的常见做法，再将问题时间码转成合成旁白工作流所需的重配动作与通用 JSON。它是独立实现，不复制第三方网页工具的代码。</p>
+      <p lang="en">Voxr is informed by common subtitle-timeline QC practice, then translates review timecodes into regeneration actions and generic JSON for synthesized-voice workflows. It is independently implemented and does not copy third-party web-tool code.</p>
+      <ol>
+        <li><a href="https://www2.securecms.com/ICASSP2021/Papers/ViewPaper_MS.asp?PaperNum=4465" target="_blank" rel="noopener">Yuan &amp; Church (2021), ICASSP</a> — Mandarin rate and prosody depend on corpus and context.</li>
+        <li><a href="https://pubmed.ncbi.nlm.nih.gov/26392395/" target="_blank" rel="noopener">Pitt, Szostak &amp; Dilley (2016)</a> — Contextual rate changes can affect speech perception.</li>
+        <li><a href="https://www.isca-archive.org/speechprosody_2016/lai16b_speechprosody.pdf" target="_blank" rel="noopener">Lai &amp; Dilley (2016)</a> — Contextual rate can affect word perception in Mandarin.</li>
+        <li><a href="https://pubmed.ncbi.nlm.nih.gov/2366048/" target="_blank" rel="noopener">Breznitz (1990)</a> — Pauses and voiced time change under faster reading.</li>
+        <li><a href="https://pubmed.ncbi.nlm.nih.gov/39680790/" target="_blank" rel="noopener">Mahr, Rathouz &amp; Hustad (2024)</a> — Speaking rate and intelligibility show a speed–accuracy trade-off in children.</li>
+      </ol>
+      <p class="hint">文献支持测量方向，不直接推出 Voxr 的任何 CPM、WPM 或间隔参考区间。 / The literature supports the measurement direction; it does not directly derive any Voxr CPM, WPM, or gap range.</p>
+    </section>
+
+    <section class="profile">
+      <h2>已知限制 <span lang="en">/ Known limitations</span></h2>
       <ul>
-        <li>SRT 的文本和显示时间可能压缩、分行或省略实际说话内容。</li>
-        <li>重叠字幕会按覆盖区间合并计算；工具无法判断多人同时说话、双语字幕或时间码错误。</li>
-        <li>中英混合内容分别显示 CPM 和 WPM，不生成单一的场景基准判断。</li>
-        <li>文本极少或极短的字幕不参与相邻语速变化提示。</li>
+        <li>SRT 可能与真实说话内容不完全一致。 / SRT timing and text may not match the actual performance.</li>
+        <li>重叠不能解释为多人、双语或时间码错误中的任何一种。 / Overlap cannot be attributed to concurrent speakers, bilingual subtitles, or a timing error.</li>
+        <li>中英混合内容不生成单一的“正常”判断。 / Mixed-language material receives no single “normal” judgment.</li>
       </ul>
     </section>
 
-    <section class="profile">
-      <h2>可核查参考</h2>
-      <ol>
-        <li><a href="https://www2.securecms.com/ICASSP2021/Papers/ViewPaper_MS.asp?PaperNum=4465" target="_blank" rel="noopener">Yuan &amp; Church (2021), ICASSP</a>：中文语速及韵律表现应在具体语料中观察。</li>
-        <li><a href="https://pubmed.ncbi.nlm.nih.gov/26392395/" target="_blank" rel="noopener">Pitt, Szostak &amp; Dilley (2016)</a>：上下文速率变化会影响语音感知。</li>
-        <li><a href="https://www.isca-archive.org/speechprosody_2016/lai16b_speechprosody.pdf" target="_blank" rel="noopener">Lai &amp; Dilley (2016)</a>：中文普通话的上下文语速可影响词的感知。</li>
-        <li><a href="https://www.isca-archive.org/speechprosody_2022/werner22_speechprosody.html" target="_blank" rel="noopener">Werner, Trouvain &amp; Möbius (2022)</a>：停顿位置与时长会随语言和语速变化。</li>
-      </ol>
-      <p class="hint">这些文献支持测量方向，不直接推出本工具中的具体 CPM、WPM 或停顿参考区间。</p>
-    </section>
-
-    <p><a class="button" href="./index.html">返回检查工具</a></p>
+    <p><a class="button" href="./index.html">返回检查工具 / Back to Voxr</a></p>
   </main>
 </body>
 </html>
