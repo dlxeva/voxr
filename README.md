@@ -3,7 +3,7 @@
 **Local rhythm QC for AI voiceover delivery.**
 **面向 AI 合成旁白交付的本地节奏质检工具。**
 
-[中文 README](README.zh-CN.md) · [Methodology / 方法、参考与边界](METHODOLOGY.md) · [Agent Skill](skills/voxr-rhythm-review)
+[中文 README](README.zh-CN.md) · [Methodology / 方法、参考与边界](METHODOLOGY.md) · [Agent Skill](skills/voxr-rhythm-review) · [Iteration package schema](schemas/voxr.voice-iteration-package.schema.json)
 
 Voxr is a browser-only tool for reviewing an SRT timeline and, optionally, an authorized voiceover file. It helps AI-video creators inspect timing, find clips worth replaying, and hand a concrete regeneration brief to the next TTS or editing step.
 
@@ -15,8 +15,8 @@ Voxr 是一个纯浏览器本地工具：它读取 SRT 时间轴，并可选读�
 - 本地解析 `.srt`，报告字幕覆盖、时间线时长、间隔、中文 CPM、英文 WPM 和相邻片段语速变化。
 - Offers delivery-purpose presets such as explainers, documentaries, product videos, short-form clips, and children’s content.
 - 提供解释型视频、纪录片、产品视频、短视频、儿童内容等配音用途预设。
-- Lets an authorized user import audio for **Audio QC Lite**: waveform, sample peak, RMS energy, near-full-scale samples, timeline-duration difference, and low-energy cue review.
-- 用户确认拥有授权后，可导入音频使用 **Audio QC Lite**：查看波形、样本峰值、RMS 能量、接近满刻度样本、时长差和低能量字幕区间。
+- Lets an authorized user import audio for **Audio QC Lite**: waveform, sample peak, RMS energy, near-full-scale samples, first-cue/tail timing cues, and low-energy cue review.
+- 用户确认拥有授权后，可导入音频使用 **Audio QC Lite**：查看波形、样本峰值、RMS 能量、接近满刻度样本、首条/尾部时间线索和低能量字幕区间。
 - Produces a timestamped action list and an exportable `voice-iteration-package.json` for a human or an AI agent.
 - 输出带时间码的行动清单和可导出的 `voice-iteration-package.json`，可交给人或 AI Agent 继续处理。
 
@@ -87,9 +87,9 @@ Voicebox 和 Qwen3-TTS 均为独立项目。Voxr 不打包它们，也不调用�
 
 ## Agent Skill / Agent 技能
 
-The repository includes [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md), a small Agent Skill that turns an SRT report or exported iteration package into a prioritized regeneration brief. It keeps the same evidence and authorization boundaries as the web tool.
+The repository includes [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md), a small Agent Skill that turns an SRT report or exported iteration package into a prioritized regeneration brief. It validates the v1 package contract, preserves parsing warnings, and keeps the same evidence and authorization boundaries as the web tool.
 
-仓库包含 [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md)，这是一个将 SRT 报告或导出的迭代包转为优先级重配简报的小型 Agent Skill。它与网页工具保持相同的证据与授权边界。
+仓库包含 [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md)，这是一个将 SRT 报告或导出的迭代包转为优先级重配简报的小型 Agent Skill。它会校验 v1 交付契约、保留解析警告，并与网页工具保持相同的证据与授权边界。
 
 ## Development / 开发
 

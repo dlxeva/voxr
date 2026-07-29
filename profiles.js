@@ -11,7 +11,6 @@ window.RHYTHM_PROFILES = {
     summary: "沉浸式旁白。信息密度低、情绪空间大、留白即叙事。",
     metrics: {
       cpmActive:    { min: 180, max: 220, unit: "CPM" },
-      cpmTimeline:  { min: 160, max: 180, unit: "CPM" },
       silenceRatio: { min: 25,  max: 30, unit: "%" },
       pausePer100:  { min: 6,   max: 10, unit: "/100字" },
     },
@@ -28,7 +27,6 @@ window.RHYTHM_PROFILES = {
     summary: "知识密度中高，节奏均匀，视觉和语音配合推进。",
     metrics: {
       cpmActive:    { min: 200, max: 240, unit: "CPM" },
-      cpmTimeline:  { min: 180, max: 200, unit: "CPM" },
       silenceRatio: { min: 15,  max: 20, unit: "%" },
       pausePer100:  { min: 5,   max: 8,  unit: "/100字" },
     },
@@ -45,7 +43,6 @@ window.RHYTHM_PROFILES = {
     summary: "节奏紧凑有能量，关键 claim 前留呼吸空间。",
     metrics: {
       cpmActive:    { min: 220, max: 260, unit: "CPM" },
-      cpmTimeline:  { min: 200, max: 220, unit: "CPM" },
       silenceRatio: { min: 10,  max: 15, unit: "%" },
       pausePer100:  { min: 4,   max: 7,  unit: "/100字" },
     },
@@ -62,7 +59,6 @@ window.RHYTHM_PROFILES = {
     summary: "信息流竞争，前 3 秒必须抓住注意力。允许高语速但不可糊。",
     metrics: {
       cpmActive:    { min: 260, max: 320, unit: "CPM" },
-      cpmTimeline:  { min: 220, max: 280, unit: "CPM" },
       silenceRatio: { min: 5,   max: 12, unit: "%" },
       pausePer100:  { min: 3,   max: 6,  unit: "/100字" },
     },
@@ -79,7 +75,6 @@ window.RHYTHM_PROFILES = {
     summary: "减速、放大停顿、每个词留消化空间。",
     metrics: {
       cpmActive:    { min: 140, max: 180, unit: "CPM" },
-      cpmTimeline:  { min: 120, max: 160, unit: "CPM" },
       silenceRatio: { min: 25,  max: 35, unit: "%" },
       pausePer100:  { min: 8,   max: 14, unit: "/100字" },
     },
@@ -98,7 +93,6 @@ window.RHYTHM_PROFILES = {
     summary: "节奏从容，为画面保留空间。",
     metrics: {
       wpmActive:    { min: 145, max: 165, unit: "WPM" },
-      wpmTimeline:  { min: 130, max: 150, unit: "WPM" },
       silenceRatio: { min: 20,  max: 30, unit: "%" },
       pausePer100:  { min: 8,   max: 14, unit: "/100w" },
     },
@@ -115,7 +109,6 @@ window.RHYTHM_PROFILES = {
     summary: "清楚、均匀的讲解节奏。",
     metrics: {
       wpmActive:    { min: 160, max: 180, unit: "WPM" },
-      wpmTimeline:  { min: 150, max: 165, unit: "WPM" },
       silenceRatio: { min: 15,  max: 20, unit: "%" },
       pausePer100:  { min: 7,   max: 12, unit: "/100w" },
     },
@@ -132,7 +125,6 @@ window.RHYTHM_PROFILES = {
     summary: "紧凑有能量，关键表达保留落点。",
     metrics: {
       wpmActive:    { min: 165, max: 190, unit: "WPM" },
-      wpmTimeline:  { min: 155, max: 175, unit: "WPM" },
       silenceRatio: { min: 10,  max: 15, unit: "%" },
       pausePer100:  { min: 5,   max: 9,  unit: "/100w" },
     },
@@ -149,7 +141,6 @@ window.RHYTHM_PROFILES = {
     summary: "高能量短内容，画面承担部分上下文。",
     metrics: {
       wpmActive:    { min: 180, max: 220, unit: "WPM" },
-      wpmTimeline:  { min: 170, max: 200, unit: "WPM" },
       silenceRatio: { min: 5,   max: 12, unit: "%" },
       pausePer100:  { min: 3,   max: 8,  unit: "/100w" },
     },
@@ -166,7 +157,6 @@ window.RHYTHM_PROFILES = {
     summary: "放慢节奏，保留充足的理解时间。",
     metrics: {
       wpmActive:    { min: 110, max: 140, unit: "WPM" },
-      wpmTimeline:  { min: 100, max: 120, unit: "WPM" },
       silenceRatio: { min: 25,  max: 35, unit: "%" },
       pausePer100:  { min: 10,  max: 16, unit: "/100w" },
     },
@@ -232,6 +222,9 @@ window.RHYTHM_PROFILES = {
 // references. Keeping all three values independently editable creates
 // contradictory targets: timeline rate = active rate × (1 - gap share).
 for (const profile of Object.values(window.RHYTHM_PROFILES)) {
+  profile.profileVersion = "0.2.0";
+  profile.evidenceLevel = "heuristic-production-reference";
+  profile.lastCalibratedAt = null;
   const silence = profile.metrics.silenceRatio;
   if (!silence) continue;
   for (const [activeKey, timelineKey] of [["cpmActive", "cpmTimeline"], ["wpmActive", "wpmTimeline"]]) {

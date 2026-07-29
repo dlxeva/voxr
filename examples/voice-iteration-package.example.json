@@ -1,20 +1,27 @@
 {
   "format": "voxr.voice-iteration-package",
   "version": 1,
-  "purpose": "explainer",
-  "source": {
-    "srt": "example.srt",
-    "audioIncluded": false
+  "workflow": "voiceover-rhythm-iteration",
+  "generatedAt": "2026-07-29T00:00:00.000Z",
+  "purpose": { "id": "general-explainer", "label": "知识解说", "status": "reference" },
+  "source": { "srtFile": "example.srt", "audioIncluded": false, "audioFile": null, "audioAuthorizationConfirmed": false },
+  "inputBoundary": {
+    "timing": "SRT text and timestamps",
+    "audio": "No audio measurement included",
+    "excluded": ["LUFS", "true peak", "pitch/F0", "emotion", "intelligibility", "voice similarity"]
   },
-  "summary": {
-    "reviewFocus": "Timing and pacing only; no LUFS, pitch, emotion, or voice-similarity claim."
-  },
+  "profile": { "id": "general-explainer", "label": "知识解说", "status": "reference", "profileVersion": "0.2.0", "evidenceLevel": "heuristic-production-reference", "lastCalibratedAt": null },
+  "parser": { "parsedCueCount": 4, "skippedBlockCount": 0, "warnings": [] },
+  "timeline": { "firstCueOffset": 0, "lastCueEnd": 17.9, "subtitleSpan": 17.9, "subtitleCoverageDuration": 12.2, "subtitleGapRatio": 31.8 },
+  "measurements": { "language": "zh", "languageDetail": "zh-dominant", "languageComposition": { "chineseCharacters": 42, "englishWords": 1, "englishUnitShare": 0.023 }, "activeRate": 218.4, "timelineRate": 162.1, "rateUnit": "CPM", "pauseCount": 3, "pausePer100": 7.1, "overlaps": [] },
   "priorities": [
     {
+      "priority": 3,
       "timecode": "00:00:12,400–00:00:17,900",
       "issue": "Fast active speech rate",
-      "action": "Slow this cue slightly or split it at a natural clause boundary.",
+      "recommendation": "Slow this cue slightly or split it at a natural clause boundary.",
       "prompt": "Keep the same authorized voice. Deliver this sentence at a calmer pace with one short natural pause at the clause boundary."
     }
-  ]
+  ],
+  "audioQC": null
 }

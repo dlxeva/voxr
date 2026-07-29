@@ -18,9 +18,9 @@
 
   // Duration bands are descriptive. Duration alone cannot establish a pause's intent.
   const PAUSE_TYPES = [
-    { type: "short", min: 0.20, max: 0.49, label: "短间隔", enLabel: "Short" },
-    { type: "medium", min: 0.50, max: 0.99, label: "中间隔", enLabel: "Medium" },
-    { type: "long", min: 1.00, max: 2.99, label: "长间隔", enLabel: "Long" },
+    { type: "short", min: 0.20, max: 0.50, label: "短间隔", enLabel: "Short" },
+    { type: "medium", min: 0.50, max: 1.00, label: "中间隔", enLabel: "Medium" },
+    { type: "long", min: 1.00, max: 3.00, label: "长间隔", enLabel: "Long" },
     { type: "extended", min: 3.00, max: Infinity, label: "超长间隔", enLabel: "Extended" },
   ];
 
@@ -31,25 +31,55 @@
     return Number(h) * 3600 + Number(m) * 60 + Number(s) + Number(ms.padEnd(3, "0")) / 1000;
   }
 
-  function parseSrt(source) {
+  function parseSrtDetailed(source) {
     const normalized = String(source).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim();
     if (!normalized) throw new Error("The SRT file is empty.");
     const entries = [];
-    for (const block of normalized.split(/\n\s*\n/)) {
+    const warnings = [];
+    const blocks = normalized.split(/\n\s*\n/);
+    for (const [blockIndex, block] of blocks.entries()) {
       const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
       const timeLineIndex = lines.findIndex((line) => line.includes("-->"));
-      if (timeLineIndex < 0 || timeLineIndex === lines.length - 1) continue;
+      const originalCueId = timeLineIndex > 0 ? lines.slice(0, timeLineIndex).join(" ") : timeLineIndex < 0 ? (lines[0] || null) : null;
+      if (timeLineIndex < 0) {
+        warnings.push({ block: blockIndex + 1, cueId: originalCueId, code: "missing-timestamp", message: "Skipped block without an SRT timestamp." });
+        continue;
+      }
+      if (timeLineIndex === lines.length - 1) {
+        warnings.push({ block: blockIndex + 1, cueId: originalCueId, code: "missing-text", message: "Skipped cue without subtitle text." });
+        continue;
+      }
       const match = lines[timeLineIndex].match(/(\d+:\d+:\d+[,.]\d+)\s*-->\s*(\d+:\d+:\d+[,.]\d+)/);
-      if (!match) continue;
+      if (!match) {
+        warnings.push({ block: blockIndex + 1, cueId: originalCueId, code: "invalid-timestamp", message: "Skipped cue with an invalid timestamp." });
+        continue;
+      }
       const text = lines.slice(timeLineIndex + 1).join(" ").replace(/<[^>]*>/g, "").trim();
-      if (!text) continue;
-      const start = toSeconds(match[1]);
-      const end = toSeconds(match[2]);
-      if (end <= start) throw new Error("An SRT entry ends before it starts.");
-      entries.push({ index: entries.length + 1, start, end, text });
+      if (!text) {
+        warnings.push({ block: blockIndex + 1, cueId: originalCueId, code: "empty-text", message: "Skipped cue with empty subtitle text." });
+        continue;
+      }
+      try {
+        const start = toSeconds(match[1]);
+        const end = toSeconds(match[2]);
+        if (end <= start) throw new Error("Cue ends before it starts.");
+        entries.push({ index: entries.length + 1, originalCueId, start, end, text });
+      } catch (error) {
+        warnings.push({ block: blockIndex + 1, cueId: originalCueId, code: "invalid-cue-range", message: error.message });
+      }
     }
     if (!entries.length) throw new Error("No valid subtitle entries found.");
-    return entries.sort((a, b) => a.start - b.start);
+    return {
+      cues: entries.sort((a, b) => a.start - b.start),
+      parsedCueCount: entries.length,
+      skippedBlockCount: warnings.length,
+      warnings,
+      totalBlockCount: blocks.length,
+    };
+  }
+
+  function parseSrt(source) {
+    return parseSrtDetailed(source).cues;
   }
 
   function countText(text) {
@@ -75,17 +105,23 @@
   }
 
   function classifyLanguage(counts) {
-    if (counts.chineseCharacters && counts.englishWords) return "mixed";
-    if (counts.chineseCharacters) return "zh";
-    return "en";
+    const totalUnits = counts.chineseCharacters + counts.englishWords;
+    if (!totalUnits) return { primary: "unknown", kind: "unknown", englishShare: 0 };
+    if (!counts.englishWords) return { primary: "zh", kind: "zh", englishShare: 0 };
+    if (!counts.chineseCharacters) return { primary: "en", kind: "en", englishShare: 1 };
+    const englishShare = counts.englishWords / totalUnits;
+    if (englishShare < 0.15) return { primary: "zh", kind: "zh-dominant", englishShare: round(englishShare, 3) };
+    if (englishShare > 0.85) return { primary: "en", kind: "en-dominant", englishShare: round(englishShare, 3) };
+    return { primary: "mixed", kind: "balanced-mixed", englishShare: round(englishShare, 3) };
   }
 
   /** Put a gap in one non-overlapping duration band. */
   function classifyPause(duration) {
-    const types = PAUSE_TYPES.filter(
-      (pt) => duration >= pt.min && duration <= pt.max
-    );
-    return types.length ? types[0] : { type: "other", label: "极短间隔", enLabel: "Very short" };
+    if (duration < 0.20) return { type: "other", label: "极短间隔", enLabel: "Very short" };
+    if (duration < 0.50) return PAUSE_TYPES[0];
+    if (duration < 1.00) return PAUSE_TYPES[1];
+    if (duration < 3.00) return PAUSE_TYPES[2];
+    return PAUSE_TYPES[3];
   }
 
   /**
@@ -166,7 +202,8 @@
       };
     }).filter((pause) => pause.duration > 0);
 
-    const language = classifyLanguage(total);
+    const languageInfo = classifyLanguage(total);
+    const language = languageInfo.primary;
 
     // Pause statistics
     const pauseDurations = pauses.map((p) => p.duration);
@@ -213,9 +250,20 @@
       : language === "en" ? rows.map((row) => row.wpm).filter(Number.isFinite) : [];
 
     const rateJumps = detectRateJumps(rows, language);
+    const overlaps = rows.slice(1).map((row, index) => {
+      const previous = rows[index];
+      const duration = Math.max(0, previous.end - row.start);
+      return duration > 0 ? { first: previous.index, second: row.index, duration: round(duration, 3) } : null;
+    }).filter(Boolean);
 
     return {
       language,
+      languageDetail: languageInfo.kind,
+      languageComposition: {
+        chineseCharacters: total.chineseCharacters,
+        englishWords: total.englishWords,
+        englishUnitShare: languageInfo.englishShare,
+      },
       totals: {
         ...total,
         activeDuration: round(total.activeDuration, 3),
@@ -239,6 +287,7 @@
         slowest: primaryRates.length ? round(Math.min(...primaryRates)) : null,
       },
       rateJumps,
+      overlaps,
       pauses,
       rows,
     };
@@ -256,9 +305,11 @@
    */
   function compareRange(value, range) {
     if (value == null || !range) return { status: "n/a", label: "—" };
-    if (value > range.max) return { status: "high", label: `↑ ${value} (max ${range.max})` };
-    if (value < range.min) return { status: "low", label: `↓ ${value} (min ${range.min})` };
-    return { status: "ok", label: `${value} ✓` };
+    const numericValue = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(numericValue)) return { status: "n/a", label: "—" };
+    if (numericValue > range.max) return { status: "high", label: `↑ ${numericValue} (max ${range.max})` };
+    if (numericValue < range.min) return { status: "low", label: `↓ ${numericValue} (min ${range.min})` };
+    return { status: "ok", label: `${numericValue} ✓` };
   }
 
   function escapeHtml(value) {
@@ -270,5 +321,5 @@
       .replace(/'/g, "&#39;");
   }
 
-  return { parseSrt, analyze, countText, formatTime, compareRange, escapeHtml, PAUSE_TYPES };
+  return { parseSrt, parseSrtDetailed, analyze, countText, formatTime, compareRange, escapeHtml, PAUSE_TYPES };
 });

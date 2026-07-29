@@ -15,9 +15,13 @@ Voxr reads SRT text and timestamps. It calculates subtitle coverage, full timeli
 
 ## 2. Audio QC Lite / Audio QC Lite
 
-在用户确认拥有授权后，浏览器会在本地把音频解码为 PCM 样本，并显示波形、样本峰值、RMS 平均能量、接近满刻度样本数量、与 SRT 时间线的时长差，以及可供回听的相对低能量字幕区间。文件不会上传、保存或发送到服务端。
+在用户确认拥有授权后，浏览器会在本地把音频解码为 PCM 样本，并显示波形、样本峰值、RMS 平均能量、接近满刻度样本数量、首条字幕前的时间、最后字幕结束后的音频余量，以及可供回听的相对低能量字幕区间。文件不会上传、保存或发送到服务端。
 
-After the user confirms authorization, the browser decodes the audio locally into PCM samples. It shows waveform data, sample peak, RMS average energy, near-full-scale samples, duration difference from the SRT timeline, and relatively low-energy cues for replay. Files are not uploaded, stored, or sent to a service.
+After the user confirms authorization, the browser decodes the audio locally into PCM samples. It shows waveform data, sample peak, RMS average energy, near-full-scale samples, time before the first subtitle, audio remaining after the final subtitle, and relatively low-energy cues for replay. Files are not uploaded, stored, or sent to a service.
+
+“相对低能量”只会在长度不少于 0.45 秒、且 RMS 比同批合格字幕区间中位数低至少 6 dB 时提示。它是回听线索，不是“音量不合格”“情绪不足”或静音判断。
+
+“Relative low energy” is shown only for cues at least 0.45 seconds long and at least 6 dB below the median RMS of eligible cues in the same file. It is a replay cue, not a loudness failure, an emotion judgment, or a silence detector.
 
 这些指标**不等同于** LUFS、True Peak、音高/F0、情绪、可懂度、音色相似度或版权/授权判断。当前版本没有实现 EBU R128 所需的加权、门限和校验流程，因此不会报告 LUFS。
 
@@ -35,7 +39,7 @@ The same number can feel very different across scripts, languages, speaking styl
 
 ## 4. 间隔分类 / Gap categories
 
-工具按相邻字幕的时间差分组：少于 0.20 秒为极短；0.20–0.49 秒为短；0.50–0.99 秒为中；1.00–2.99 秒为长；3 秒及以上为超长。
+工具按相邻字幕的时间差分组：少于 0.20 秒为极短；[0.20, 0.50) 秒为短；[0.50, 1.00) 秒为中；[1.00, 3.00) 秒为长；3 秒及以上为超长。每个正间隔只属于一个区间。
 
 The tool groups the time difference between adjacent cues as: under 0.20 s = very short; 0.20–0.49 s = short; 0.50–0.99 s = medium; 1.00–2.99 s = long; 3 s or more = extra long.
 
@@ -63,6 +67,7 @@ The studies below support the measurement direction—that rate, context, and pa
 
 - SRT 的显示时间和文本可能压缩、分行或省略真实说话内容。/ SRT timing and text can compress, line-break, or omit what was actually spoken.
 - 重叠字幕按覆盖区间合并计算；Voxr 无法判断它来自多人同时说话、双语字幕还是时间码错误。/ Overlapping cues are unioned for coverage; Voxr cannot tell whether an overlap represents concurrent speakers, bilingual subtitles, or a timestamp error.
-- 中文按汉字计数，英文按词计数；中英混合内容分别显示两种速率，不输出单一的间隔频率、波动值或场景判断。/ Chinese is counted by characters and English by words. Mixed-language material is shown separately and receives no single gap-frequency, variation, or preset judgment.
+- 中文按汉字计数，英文按词计数；含少量英文产品名的中文/英文脚本会按主导语言显示相应制作参考，只有中英占比接近的内容才不输出单一的间隔频率、波动值或场景判断。/ Chinese is counted by characters and English by words. A Chinese or English dominant script with a few product names uses its dominant-language reference; only balanced mixed-language content receives no single gap-frequency, variation, or preset judgment.
+- SRT 解析会保留被跳过区块的数量、原始 cue ID 和原因。带有解析警告的导出不应被下游自动化当作“完整源文件”。/ SRT parsing preserves skipped-block count, source cue ID, and reason. A package with parsing warnings must not be treated as a complete source by downstream automation.
 - 文本极少或极短的字幕会产生不稳定的瞬时速率，因此不参与相邻语速变化提示。/ Very short or text-sparse cues have unstable instantaneous rates and are excluded from neighboring-rate-change flags.
 - 工具只在本地浏览器运行；当前没有同步、协作或云端保存。/ The tool runs only in the local browser; it currently has no sync, collaboration, or cloud storage.

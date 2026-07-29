@@ -1,6 +1,6 @@
 # Voxr（中文说明）
 
-[English README](README.md) · [方法、参考与边界](METHODOLOGY.md) · [Agent Skill](skills/voxr-rhythm-review)
+[English README](README.md) · [方法、参考与边界](METHODOLOGY.md) · [Agent Skill](skills/voxr-rhythm-review) · [迭代包 Schema](schemas/voxr.voice-iteration-package.schema.json)
 
 Voxr 是一个面向 AI 合成旁白交付的本地节奏质检工具。它读取 SRT 时间轴，并可选读取一份已获授权的旁白音频，帮助创作者检查节奏、定位值得回听的片段，并把明确的重配要求交给下一步 TTS 或剪辑流程。
 
@@ -8,7 +8,7 @@ Voxr 是一个面向 AI 合成旁白交付的本地节奏质检工具。它读�
 
 - 本地解析 `.srt`，报告字幕覆盖、时间线时长、间隔、中文 CPM、英文 WPM 和相邻片段语速变化。
 - 按解释型视频、纪录片、产品视频、短视频、儿童内容等配音用途提供制作复盘预设。
-- 用户确认拥有授权后，使用 Audio QC Lite 查看 PCM 波形、样本峰值、RMS 能量、接近满刻度样本、时长差与低能量字幕区间。
+- 用户确认拥有授权后，使用 Audio QC Lite 查看 PCM 波形、样本峰值、RMS 能量、接近满刻度样本、首条/尾部时间线索与低能量字幕区间。
 - 输出带时间码的行动清单和 `voice-iteration-package.json`，方便交给人或 AI Agent 继续处理。
 
 ## 不能做什么
@@ -49,7 +49,7 @@ Voxr 不打包 Voicebox 或 Qwen3-TTS，也不调用它们的 API；JSON 导出�
 
 ## Agent Skill
 
-仓库包含 [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md)，用于把 SRT 报告或导出的迭代包转成优先级重配简报，并保留相同的证据和授权边界。
+仓库包含 [`$voxr-rhythm-review`](skills/voxr-rhythm-review/SKILL.md)，用于把 SRT 报告或导出的迭代包转成优先级重配简报。它会校验 v1 交付契约、保留解析警告，并维持相同的证据和授权边界。
 
 ## 开发与贡献
 

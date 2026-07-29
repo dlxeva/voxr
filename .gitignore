@@ -1,6 +1,7 @@
 # Finder and editor metadata
 .DS_Store
 .vscode/
+.canvas-prompt/
 
 # Private or potentially licensed input media — keep outside the repository.
 *.wav
@@ -13,3 +14,6 @@
 
 # Files produced from a creator's own project.
 voice-iteration-package.json
+
+# Local review material may be useful during development, but is not a public demo.
+examples/case-01/

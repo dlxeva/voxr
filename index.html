@@ -7,17 +7,35 @@
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main>
+  <main class="app-shell">
     <header class="masthead">
-      <p class="eyebrow" id="privacy-kicker">本地处理 · 合成旁白质检 · Beta</p>
+      <a class="wordmark" href="./" aria-label="Voxr 首页"><span>VOXR</span><small>VOICE ARCHIVE</small></a>
       <div class="locale-switch" aria-label="Language">
         <button type="button" data-locale="zh" aria-pressed="true">中文</button>
         <button type="button" data-locale="en" aria-pressed="false">EN</button>
       </div>
     </header>
-    <h1 id="page-title">合成旁白节奏检查</h1>
-    <p class="lede" id="page-lede">导入配音生成后的 SRT，定位需要重配的时间点，并导出可交给 AI 或 TTS 的修改包。适用于授权音色克隆与合成旁白的交付复盘。</p>
-    <section class="controls">
+    <section class="voice-hero" aria-labelledby="page-title">
+      <div class="voice-hero__copy">
+        <p class="eyebrow" id="privacy-kicker">本地处理 · 合成旁白质检 · Beta</p>
+        <p class="archive-code">VOICE LAB / 01 · SYNTHETIC NARRATION</p>
+        <h1 id="page-title">合成旁白节奏检查</h1>
+        <p class="lede" id="page-lede">导入配音生成后的 SRT，定位需要重配的时间点，并导出可交给 AI 或 TTS 的修改包。适用于授权音色克隆与合成旁白的交付复盘。</p>
+        <p class="hero-instruction">先标记交付用途，再把生成结果放上工作台。</p>
+      </div>
+      <aside class="recorder-console" aria-label="本地试听控制台">
+        <div class="recorder-console__status"><span class="status-led" aria-hidden="true"></span><span id="recorder-status">NO TAPE LOADED</span></div>
+        <img class="recorder-console__image" src="./assets/voice-recorder.webp" alt="一台档案室里的旧式磁带录音机">
+        <button id="recorder-play" class="recorder-console__play" type="button" disabled aria-label="播放已上传的音频">
+          <span aria-hidden="true">▶</span><span id="recorder-play-label">载入音频后试听</span>
+        </button>
+        <p class="recorder-console__note">CONVERSATION BACKUP<br>LOCAL PLAYBACK ONLY</p>
+        <audio id="desk-audio-player" preload="metadata"></audio>
+      </aside>
+    </section>
+    <section class="workbench" aria-labelledby="workbench-title">
+      <div class="workbench__heading"><div><p class="eyebrow">INTAKE DESK</p><h2 id="workbench-title">把旁白交付放上工作台</h2></div><p>所有文件都只在当前浏览器处理。</p></div>
+      <section class="controls">
       <label id="profile-label" class="purpose-select"><span class="field-kicker">第一步</span>配音用途
         <select id="profile" aria-label="配音用途"></select>
       </label>
@@ -31,6 +49,7 @@
         <span class="drop-status" id="audio-status">可选：未选择音频</span>
         <input id="audio-file" type="file" accept="audio/wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/*">
       </label>
+      </section>
     </section>
     <label class="consent" id="audio-consent"><input id="audio-consent-input" type="checkbox">我确认拥有该音频及所涉声音的分析授权；文件仅在当前浏览器本地处理。</label>
     <div class="workflow-actions" aria-live="polite"><p id="ready-state">先上传一份 SRT，再开始分析。</p><div><button id="analyze" class="button" type="button" disabled>开始分析</button><button id="reset" class="button button-secondary" type="button">清空</button></div></div>

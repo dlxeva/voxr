@@ -6,6 +6,9 @@ const profileSelect = $("#profile");
 const dropZone = $("#drop-zone");
 const audioDropZone = $("#audio-drop-zone");
 const audioConsent = $("#audio-consent-input");
+const recorderConsole = $(".recorder-console");
+const deskAudioPlayer = $("#desk-audio-player");
+const recorderPlay = $("#recorder-play");
 let currentAnalysis = null;
 let currentAudioAnalysis = null;
 let currentAudioFileName = null;
@@ -14,6 +17,8 @@ let currentAudioSampleRate = null;
 let currentAudioUrl = null;
 let pendingSrtFile = null;
 let pendingAudioFile = null;
+let currentParseReport = null;
+let analysisIsCurrent = false;
 let locale = "zh";
 
 const UI_COPY = {
@@ -23,6 +28,7 @@ const UI_COPY = {
     profile: "配音用途", drop: "把生成后的 <code>.srt</code> 文件拖到这里", choose: "或选择一个文件",
     start: "从本地开始", startCopy: "选择或拖入一份生成后的 SRT。分析只在当前浏览器中运行，字幕内容不会离开你的设备。",
     groups: { zh: "中文内容", en: "英文内容", universal: "通用内容" },
+    heroInstruction: "先标记交付用途，再把生成结果放上工作台。", recorderEmpty: "NO TAPE LOADED", recorderReady: "TAPE LOADED · LOCAL ONLY", recorderPlay: "载入音频后试听", recorderPause: "暂停试听", recorderResume: "试听本地音频",
   },
   en: {
     title: "Synthetic Voiceover Rhythm Check", kicker: "LOCAL ONLY · VOICEOVER QA · BETA",
@@ -30,6 +36,7 @@ const UI_COPY = {
     profile: "Delivery purpose", drop: "Drop a generated <code>.srt</code> file here", choose: "or choose a file",
     start: "Start locally", startCopy: "Choose or drop a generated SRT. Processing stays in this browser and your subtitle text stays on your device.",
     groups: { zh: "Chinese content", en: "English content", universal: "General use" },
+    heroInstruction: "Mark the delivery purpose, then place the render on the desk.", recorderEmpty: "NO TAPE LOADED", recorderReady: "TAPE LOADED · LOCAL ONLY", recorderPlay: "Load audio to preview", recorderPause: "Pause preview", recorderResume: "Preview local audio",
   },
 };
 
@@ -82,9 +89,31 @@ function setLocale(nextLocale) {
   $("#drop-action").textContent = copy.choose;
   $("#empty-title").textContent = copy.start;
   $("#empty-copy").textContent = copy.startCopy;
+  $(".hero-instruction").textContent = copy.heroInstruction;
   document.querySelectorAll("[data-locale]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.locale === locale)));
   renderProfiles();
   if (currentAnalysis) render(currentAnalysis, $("#filename").textContent);
+  updateRecorderState();
+}
+
+function updateRecorderState() {
+  const hasAudio = Boolean(pendingAudioFile && currentAudioUrl);
+  const copy = UI_COPY[locale];
+  recorderConsole.classList.toggle("has-audio", hasAudio);
+  recorderPlay.disabled = !hasAudio;
+  if (deskAudioPlayer.dataset.objectUrl !== (currentAudioUrl || "")) {
+    deskAudioPlayer.pause();
+    deskAudioPlayer.src = currentAudioUrl || "";
+    deskAudioPlayer.dataset.objectUrl = currentAudioUrl || "";
+  }
+  if (!hasAudio) {
+    recorderConsole.classList.remove("is-playing");
+    $("#recorder-status").textContent = copy.recorderEmpty;
+    $("#recorder-play-label").textContent = copy.recorderPlay;
+  } else if (!recorderConsole.classList.contains("is-playing")) {
+    $("#recorder-status").textContent = copy.recorderReady;
+    $("#recorder-play-label").textContent = copy.recorderResume;
+  }
 }
 
 function updateReadyState() {
@@ -115,6 +144,7 @@ function updateUploadStates() {
   audioStatus.textContent = pendingAudioFile
     ? `${fileLabel(pendingAudioFile)}${audioConsent.checked ? " · 已确认授权" : " · 等待授权确认"}`
     : "可选：未选择音频";
+  updateRecorderState();
 }
 
 function metric(label, value, note = "", statusClass = "") {
@@ -137,9 +167,10 @@ function benchmarkRow(label, measured, range, unit = "") {
   if (!range) return "";
   const cmp = RA().compareRange(measured, range);
   const rangeStr = `${range.min}–${range.max}${unit}`;
+  const measuredText = measured == null ? "—" : `${measured}${unit}`;
   return `<tr class="${cmp.status}">
     <td>${label}</td>
-    <td class="val">${measured ?? "—"}</td>
+    <td class="val">${measuredText}</td>
     <td class="target">${rangeStr}</td>
     <td class="flag ${cmp.status}">${cmp.status === "ok" ? "✓ 区间内" : cmp.status === "high" ? "↑ 偏高" : cmp.status === "low" ? "↓ 偏低" : "—"}</td>
   </tr>`;
@@ -179,7 +210,7 @@ function benchmarkPanel(analysis) {
   const rows = [
     profile.metrics[activeKey] ? benchmarkRow("字幕覆盖语速", activeValue, profile.metrics[activeKey], profile.metrics[activeKey].unit) : "",
     profile.metrics[timelineKey] ? benchmarkRow("时间线语速", timelineValue, profile.metrics[timelineKey], profile.metrics[timelineKey].unit) : "",
-    profile.metrics.silenceRatio ? benchmarkRow("字幕覆盖外时间占比", t.silenceRatio + "%", profile.metrics.silenceRatio, "%") : "",
+    profile.metrics.silenceRatio ? benchmarkRow("字幕覆盖外时间占比", t.silenceRatio, profile.metrics.silenceRatio, "%") : "",
     profile.metrics.pausePer100 && t.pausePer100 != null ? benchmarkRow("每百字词间隔", t.pausePer100, profile.metrics.pausePer100, profile.metrics.pausePer100.unit) : "",
   ].filter(Boolean).join("");
 
@@ -253,6 +284,15 @@ function actionItems(analysis, profile) {
   const rateUnit = isZh ? "CPM" : "WPM";
   const issues = [];
 
+  for (const overlap of analysis.overlaps || []) {
+    issues.push({
+      priority: 4,
+      time: timeRange(analysis.rows, [overlap.first, overlap.second]),
+      title: "字幕时间码重叠，建议优先复核",
+      detail: `两条字幕重叠 ${overlap.duration}s。请先确认这是否为多人说话、双语叠加或时间码错误；不要仅凭这一信号自动修改文本。`,
+    });
+  }
+
   for (const jump of analysis.rateJumps) {
     issues.push({
       priority: 3,
@@ -302,16 +342,45 @@ function iterationPrompt(item) {
 function iterationPackage(analysis, profile) {
   const items = actionItems(analysis, profile);
   return {
-    schemaVersion: "1.0",
-    purpose: "voiceover-rhythm-iteration",
+    format: "voxr.voice-iteration-package",
+    version: 1,
+    workflow: "voiceover-rhythm-iteration",
     generatedAt: new Date().toISOString(),
-    inputBoundary: "Derived from SRT text and timestamps only; no audio acoustics are assessed.",
-    profile: { id: profileSelect.value, label: profile.label, status: profile.status },
-    summary: { priorityClipCount: items.length, subtitleCoverageDuration: analysis.totals.subtitleCoverageDuration, timelineDuration: analysis.totals.timelineDuration, subtitleGapRatio: analysis.totals.silenceRatio },
-    clips: items.map((item) => ({ ...item, prompt: iterationPrompt(item) })),
+    purpose: { id: profileSelect.value, label: profile.label, status: profile.status },
+    source: {
+      srtFile: pendingSrtFile?.name || null,
+      audioIncluded: Boolean(currentAudioAnalysis),
+      audioFile: currentAudioAnalysis ? currentAudioFileName : null,
+      audioAuthorizationConfirmed: Boolean(currentAudioAnalysis && audioConsent.checked),
+    },
+    inputBoundary: {
+      timing: "SRT text and timestamps",
+      audio: currentAudioAnalysis ? "Authorized local PCM sample measurements only" : "No audio measurement included",
+      excluded: ["LUFS", "true peak", "pitch/F0", "emotion", "intelligibility", "voice similarity"],
+    },
+    profile: { id: profileSelect.value, label: profile.label, status: profile.status, profileVersion: profile.profileVersion, evidenceLevel: profile.evidenceLevel, lastCalibratedAt: profile.lastCalibratedAt },
+    parser: currentParseReport ? { parsedCueCount: currentParseReport.parsedCueCount, skippedBlockCount: currentParseReport.skippedBlockCount, warnings: currentParseReport.warnings } : null,
+    timeline: { firstCueOffset: analysis.rows[0]?.start ?? null, lastCueEnd: analysis.rows.at(-1)?.end ?? null, subtitleSpan: analysis.totals.timelineDuration, subtitleCoverageDuration: analysis.totals.subtitleCoverageDuration, subtitleGapRatio: analysis.totals.silenceRatio },
+    measurements: {
+      language: analysis.language,
+      languageDetail: analysis.languageDetail,
+      languageComposition: analysis.languageComposition,
+      activeRate: analysis.language === "zh" ? analysis.totals.chineseCpmActive : analysis.language === "en" ? analysis.totals.englishWpmActive : null,
+      timelineRate: analysis.language === "zh" ? analysis.totals.chineseCpmTimeline : analysis.language === "en" ? analysis.totals.englishWpmTimeline : null,
+      rateUnit: analysis.language === "zh" ? "CPM" : analysis.language === "en" ? "WPM" : null,
+      pauseCount: analysis.totals.pauseCount,
+      pausePer100: analysis.totals.pausePer100,
+      overlaps: analysis.overlaps,
+    },
+    priorities: items.map((item) => ({ priority: item.priority, timecode: item.time, issue: item.title, recommendation: item.detail, prompt: iterationPrompt(item) })),
     audioQC: currentAudioAnalysis ? {
       fileName: currentAudioFileName,
       duration: currentAudioAnalysis.duration,
+      alignment: {
+        firstCueOffset: analysis.rows[0]?.start ?? null,
+        lastCueEnd: analysis.rows.at(-1)?.end ?? null,
+        audioTailGap: analysis.rows.length ? Math.round((currentAudioAnalysis.duration - analysis.rows.at(-1).end) * 1000) / 1000 : null,
+      },
       peakDbfs: currentAudioAnalysis.peakDbfs,
       rmsDbfs: currentAudioAnalysis.rmsDbfs,
       clippedSamples: currentAudioAnalysis.clippedSamples,
@@ -322,13 +391,13 @@ function iterationPackage(analysis, profile) {
 
 function renderActionPlan(analysis, profile) {
   const items = actionItems(analysis, profile);
-  const language = analysis.language === "zh" ? "中文" : analysis.language === "en" ? "英文" : "中英混合";
+  const language = analysis.language === "zh" ? (analysis.languageDetail === "zh-dominant" ? "中文为主" : "中文") : analysis.language === "en" ? (analysis.languageDetail === "en-dominant" ? "英文为主" : "英文") : "中英均衡混合";
   const english = locale === "en";
   const languageLabel = english ? (analysis.language === "zh" ? "Chinese" : analysis.language === "en" ? "English" : "mixed-language") : language;
   const summary = items.length
-    ? (english ? `This ${languageLabel} SRT has ${items.length} high-priority moments. Address the timestamped clips first, then compare the overall metrics after editing.` : `这份 ${language} 字幕有 ${items.length} 处优先回看点。先处理带时间点的片段，再回到整体指标比较修改前后。`)
-    : (english ? `This ${languageLabel} SRT has no clear high-priority moments. Check names, numbers, and transitions against the actual audio and picture.` : `这份 ${language} 字幕没有发现明显的优先回看点。建议仍结合实际音频和画面检查专有名词、数字与转场。`);
-  const title = items.length ? (english ? `Review these ${items.length} clips first` : `本次优先复盘 ${items.length} 段`) : (english ? "No clear risk clips this time" : "本次没有明显风险段");
+    ? (english ? `This ${languageLabel} SRT has ${items.length} suggested review moments. Check the timestamped clips first, then compare the overall metrics after editing.` : `这份 ${language} 字幕有 ${items.length} 处建议优先回看的时间点。先核对带时间点的片段，再回到整体指标比较修改前后。`)
+    : (english ? `This ${languageLabel} SRT has no clear review signals. Check names, numbers, and transitions against the actual audio and picture.` : `这份 ${language} 字幕没有发现明显的优先回看点。建议仍结合实际音频和画面检查专有名词、数字与转场。`);
+  const title = items.length ? (english ? `Review these ${items.length} clips first` : `本次建议优先复盘 ${items.length} 段`) : (english ? "No clear review signals this time" : "本次没有明显优先复盘信号");
   const kicker = english ? "START HERE" : "先处理这些片段";
   const boundary = english ? "Production reference" : "制作参考";
   $("#action-plan").innerHTML = `<div class="action-plan__header"><div><p class="eyebrow">${kicker}</p><h2>${title}</h2></div><span class="hint">${boundary}</span></div><p class="action-plan__summary">${summary}</p>${items.length ? `<ol class="action-list">${items.map((item) => `<li class="action-item"><span class="action-item__time">${item.time}</span><strong class="action-item__title">${item.title}</strong><span class="action-item__detail">${item.detail}</span>${currentAudioUrl ? `<button class="action-item__play" type="button" data-play-time="${item.time}">试听这段</button>` : ""}</li>`).join("")}</ol>` : ""}`;
@@ -417,6 +486,13 @@ function audioDb(value) {
   return Number.isFinite(value) ? `${value} dBFS` : "—";
 }
 
+function median(values) {
+  if (!values.length) return null;
+  const ordered = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(ordered.length / 2);
+  return ordered.length % 2 ? ordered[middle] : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
 function renderAudioReport() {
   const report = $("#audio-report");
   if (!currentAudioAnalysis) {
@@ -424,17 +500,23 @@ function renderAudioReport() {
     return;
   }
   const audio = currentAudioAnalysis;
-  const timeline = currentAnalysis?.totals.timelineDuration;
-  const offset = timeline == null ? null : Math.round((audio.duration - timeline) * 10) / 10;
+  const firstCueOffset = currentAnalysis?.rows[0]?.start ?? null;
+  const lastCueEnd = currentAnalysis?.rows.at(-1)?.end ?? null;
+  const audioTailGap = lastCueEnd == null ? null : Math.round((audio.duration - lastCueEnd) * 1000) / 1000;
   const bars = audio.waveform.map((point, index) => {
     const x = 8 + index * (304 / Math.max(audio.waveform.length - 1, 1));
     return `<line class="audio-waveform__bar" x1="${x}" y1="${80 - point.max * 70}" x2="${x}" y2="${80 - point.min * 70}" />`;
   }).join("");
-  const lowEnergy = audio.segments.filter((segment) => Number.isFinite(segment.rmsDbfs)).sort((a, b) => a.rmsDbfs - b.rmsDbfs).slice(0, 2);
+  const eligibleSegments = audio.segments.filter((segment) => Number.isFinite(segment.rmsDbfs) && segment.end - segment.start >= 0.45);
+  const medianRms = median(eligibleSegments.map((segment) => segment.rmsDbfs));
+  const lowEnergy = medianRms == null ? [] : eligibleSegments.filter((segment) => segment.rmsDbfs <= medianRms - 6).sort((a, b) => a.rmsDbfs - b.rmsDbfs).slice(0, 3);
   const segmentNotes = currentAnalysis && lowEnergy.length
-    ? `<ol class="audio-segments">${lowEnergy.map((segment) => `<li>#${segment.index} · ${RA().formatTime(segment.start)}–${RA().formatTime(segment.end)}：相对较低的片段能量，RMS ${audioDb(segment.rmsDbfs)}，请结合实际听感检查。</li>`).join("")}</ol>`
-    : `<p class="hint">再导入对应 SRT 后，可按字幕区间查看片段能量。</p>`;
-  report.innerHTML = `<section class="audio-qc"><div class="audio-qc__header"><div><p class="eyebrow">AUDIO QC LITE</p><h2>本地音频检查</h2></div><span class="hint">${RA().escapeHtml(currentAudioFileName || "音频")}</span></div><audio id="audio-player" controls preload="metadata" src="${currentAudioUrl}">当前浏览器不支持音频播放。</audio><div class="grid"><article class="metric"><span>音频时长</span><strong>${audio.duration}s</strong><small>${audio.sampleRate} Hz</small></article><article class="metric"><span>样本峰值</span><strong>${audioDb(audio.peakDbfs)}</strong><small>${audio.clippedSamples ? `检测到 ${audio.clippedSamples} 个接近满刻度样本` : "未发现接近满刻度样本"}</small></article><article class="metric"><span>整体 RMS</span><strong>${audioDb(audio.rmsDbfs)}</strong><small>描述 PCM 平均能量，不是 LUFS</small></article><article class="metric"><span>与 SRT 时间线</span><strong>${offset == null ? "待匹配" : `${offset >= 0 ? "+" : ""}${offset}s`}</strong><small>${offset == null ? "导入 SRT 后计算" : "音频时长减去字幕时间线"}</small></article></div><svg class="audio-waveform" viewBox="0 0 320 160" role="img" aria-label="音频波形概览"><line class="audio-waveform__baseline" x1="0" y1="80" x2="320" y2="80" />${bars}</svg><p class="hint">波形、峰值与 RMS 基于本地解码的 PCM 样本。它不测量 LUFS、True Peak、音高、情绪或音色相似度。</p>${segmentNotes}</section>`;
+    ? `<ol class="audio-segments">${lowEnergy.map((segment) => `<li>#${segment.index} · ${RA().formatTime(segment.start)}–${RA().formatTime(segment.end)}：RMS ${audioDb(segment.rmsDbfs)}，低于同批合格片段中位数约 ${Math.round((medianRms - segment.rmsDbfs) * 10) / 10} dB。请结合实际听感复核。</li>`).join("")}</ol>`
+    : `<p class="hint">没有片段低于同批合格片段的 RMS 中位数 6 dB；这不等于“没有听感问题”。</p>`;
+  const alignment = lastCueEnd == null
+    ? "<small>导入 SRT 后可显示起始空档和尾部余量。</small>"
+    : `<small>首条字幕前 ${firstCueOffset}s；最后字幕结束后 ${audioTailGap}s。两者是不同的时间轴关系。</small>`;
+  report.innerHTML = `<section class="audio-qc"><div class="audio-qc__header"><div><p class="eyebrow">AUDIO QC LITE</p><h2>本地音频检查</h2></div><span class="hint">${RA().escapeHtml(currentAudioFileName || "音频")}</span></div><audio id="audio-player" controls preload="metadata" src="${currentAudioUrl}">当前浏览器不支持音频播放。</audio><div class="grid"><article class="metric"><span>音频时长</span><strong>${audio.duration}s</strong><small>${audio.sampleRate} Hz</small></article><article class="metric"><span>样本峰值</span><strong>${audioDb(audio.peakDbfs)}</strong><small>${audio.clippedSamples ? `检测到 ${audio.clippedSamples} 个接近满刻度样本` : "未发现接近满刻度样本"}</small></article><article class="metric"><span>整体 RMS</span><strong>${audioDb(audio.rmsDbfs)}</strong><small>描述 PCM 平均能量，不是 LUFS</small></article><article class="metric"><span>SRT 对齐线索</span><strong>${lastCueEnd == null ? "待匹配" : `${audioTailGap >= 0 ? "+" : ""}${audioTailGap}s`}</strong>${alignment}</article></div><svg class="audio-waveform" viewBox="0 0 320 160" role="img" aria-label="音频波形概览"><line class="audio-waveform__baseline" x1="0" y1="80" x2="320" y2="80" />${bars}</svg><p class="hint">波形、峰值与 RMS 基于本地解码的 PCM 样本。它不测量 LUFS、True Peak、音高、情绪或音色相似度。</p>${segmentNotes}</section>`;
 }
 
 function render(analysis, filename) {
@@ -463,6 +545,7 @@ function render(analysis, filename) {
 
   $("#metrics").innerHTML = [
     metric("字幕语言", isZh ? "中文" : analysis.language === "en" ? "英文" : "中英混合"),
+    metric("解析完整性", currentParseReport ? `${currentParseReport.parsedCueCount}/${currentParseReport.totalBlockCount} 区块` : "—", currentParseReport?.skippedBlockCount ? `${currentParseReport.skippedBlockCount} 个区块已跳过` : "未发现跳过区块"),
     metric("字幕覆盖时长", `${t.subtitleCoverageDuration}s`, `${t.englishWords} 英文词 · ${t.chineseCharacters} 汉字`),
     metric("完整时间线", `${t.timelineDuration}s`, `${t.totalPauseDuration}s 字幕覆盖外时间 (${t.silenceRatio}%)`),
     metric("字幕覆盖语速", formatRate(analysis), `标准差 ${analysis.variation.primaryRateStdDev ?? "—"}`, activeStatus),
@@ -473,7 +556,10 @@ function render(analysis, filename) {
   ].join("");
 
   // Panels
-  let panelsHtml = benchmarkPanel(analysis) + pauseTypesPanel(analysis);
+  const parseWarning = currentParseReport?.skippedBlockCount
+    ? `<section class="profile-panel"><p class="eyebrow">PARSING NOTICE</p><h2>字幕文件有 ${currentParseReport.skippedBlockCount} 个区块未纳入分析</h2><p>导出会保留解析警告；将结果接入自动化工作流前，请先修复源 SRT，避免把部分分析当作完整结论。</p></section>`
+    : "";
+  let panelsHtml = parseWarning + benchmarkPanel(analysis) + pauseTypesPanel(analysis);
   if (analysis.rateJumps.length) panelsHtml += rateJumpsPanel(analysis);
   $("#panels").innerHTML = panelsHtml;
 
@@ -499,6 +585,9 @@ function queueSrtFile(file) {
     return;
   }
   pendingSrtFile = file;
+  currentParseReport = null;
+  analysisIsCurrent = false;
+  $("#export").disabled = true;
   updateReadyState();
 }
 
@@ -509,8 +598,15 @@ function queueAudioFile(file) {
     return;
   }
   pendingAudioFile = file;
+  currentAudioAnalysis = null;
+  currentAudioPcm = null;
+  currentAudioSampleRate = null;
+  currentAudioFileName = null;
+  analysisIsCurrent = false;
+  $("#export").disabled = true;
   if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
   currentAudioUrl = URL.createObjectURL(file);
+  $("#audio-report").replaceChildren();
   updateReadyState();
 }
 
@@ -527,8 +623,11 @@ async function startAnalysis() {
     return;
   }
   try {
-    render(RA().analyze(RA().parseSrt(await pendingSrtFile.text())), pendingSrtFile.name);
+    currentParseReport = RA().parseSrtDetailed(await pendingSrtFile.text());
+    render(RA().analyze(currentParseReport.cues), pendingSrtFile.name);
     if (pendingAudioFile) await analyzeAudioFile(pendingAudioFile);
+    analysisIsCurrent = true;
+    $("#export").disabled = false;
     $("#error").hidden = true;
   } catch (error) {
     $("#error").textContent = error.message;
@@ -552,6 +651,7 @@ async function analyzeAudioFile(file) {
     if (!Context) throw new Error("当前浏览器不支持本地音频解码。");
     const context = new Context();
     const decoded = await context.decodeAudioData(await file.arrayBuffer());
+    if (decoded.duration > 600) throw new Error("首版本地音频检查仅支持 10 分钟以内的文件。");
     const mixed = new Float32Array(decoded.length);
     for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
       const data = decoded.getChannelData(channel);
@@ -572,13 +672,9 @@ async function analyzeAudioFile(file) {
 }
 
 function exportJson() {
-  if (!currentAnalysis) return;
+  if (!currentAnalysis || !analysisIsCurrent) return;
   const profile = window.RHYTHM_PROFILES[profileSelect.value];
-  const payload = {
-    iterationPackage: iterationPackage(currentAnalysis, profile),
-    profile: { id: profileSelect.value, label: profile.label, status: profile.status, metrics: profile.metrics },
-    analysis: currentAnalysis,
-  };
+  const payload = iterationPackage(currentAnalysis, profile);
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = Object.assign(document.createElement("a"), { href: url, download: "voice-iteration-package.json" });
@@ -608,6 +704,32 @@ profileSelect.addEventListener("change", () => {
 });
 $("#export").addEventListener("click", exportJson);
 $("#analyze").addEventListener("click", startAnalysis);
+recorderPlay.addEventListener("click", async () => {
+  if (!currentAudioUrl) return;
+  if (deskAudioPlayer.paused) {
+    try {
+      await deskAudioPlayer.play();
+    } catch (error) {
+      $("#error").textContent = `无法开始试听：${error.message}`;
+      $("#error").hidden = false;
+    }
+  } else {
+    deskAudioPlayer.pause();
+  }
+});
+deskAudioPlayer.addEventListener("play", () => {
+  recorderConsole.classList.add("is-playing");
+  $("#recorder-status").textContent = "PLAYBACK IN PROGRESS";
+  $("#recorder-play-label").textContent = UI_COPY[locale].recorderPause;
+});
+deskAudioPlayer.addEventListener("pause", () => {
+  recorderConsole.classList.remove("is-playing");
+  updateRecorderState();
+});
+deskAudioPlayer.addEventListener("ended", () => {
+  recorderConsole.classList.remove("is-playing");
+  updateRecorderState();
+});
 $("#reset").addEventListener("click", () => {
   pendingSrtFile = null;
   pendingAudioFile = null;
@@ -616,6 +738,8 @@ $("#reset").addEventListener("click", () => {
   currentAudioPcm = null;
   currentAudioSampleRate = null;
   currentAudioFileName = null;
+  currentParseReport = null;
+  analysisIsCurrent = false;
   if (currentAudioUrl) URL.revokeObjectURL(currentAudioUrl);
   currentAudioUrl = null;
   fileInput.value = "";
@@ -624,6 +748,7 @@ $("#reset").addEventListener("click", () => {
   $("#report").hidden = true;
   $("#empty").hidden = false;
   $("#audio-report").replaceChildren();
+  $("#export").disabled = true;
   $("#error").hidden = true;
   updateReadyState();
 });

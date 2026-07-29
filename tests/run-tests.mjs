@@ -4,7 +4,7 @@ import vm from "node:vm";
 import analyzerCore from "../analyzer-core.js";
 import audioCore from "../audio-core.js";
 
-const { parseSrt, analyze, compareRange, countText, escapeHtml } = analyzerCore;
+const { parseSrt, parseSrtDetailed, analyze, compareRange, countText, escapeHtml } = analyzerCore;
 const { analyzePcm } = audioCore;
 
 const profileSandbox = { window: {} };
@@ -16,6 +16,8 @@ for (const id of ["general-course", "general-news", "general-podcast"]) {
   assert.ok(profiles[id].metrics.cpmActive && profiles[id].metrics.wpmActive, `${id} should work for Chinese and English SRTs`);
 }
 for (const profile of Object.values(profiles)) {
+  assert.equal(profile.profileVersion, "0.2.0", "Each production reference must have a version");
+  assert.equal(profile.evidenceLevel, "heuristic-production-reference", "Profiles must state their evidence level");
   const silence = profile.metrics.silenceRatio;
   for (const [activeKey, timelineKey] of [["cpmActive", "cpmTimeline"], ["wpmActive", "wpmTimeline"]]) {
     const active = profile.metrics[activeKey];
@@ -73,11 +75,31 @@ const overlap = analyze(parseSrt(`1\n00:00:00,000 --> 00:00:03,000\nFirst speake
 assert.equal(overlap.totals.subtitleCoverageDuration, 5, "Overlapping subtitle coverage should be unioned");
 assert.equal(overlap.totals.totalPauseDuration, 0, "Overlaps must not create negative gap time");
 assert.equal(overlap.totals.hasOverlaps, true, "Report overlap boundary for review");
+assert.equal(overlap.overlaps.length, 1, "Expose overlapping cue pairs as an action signal");
+assert.equal(overlap.overlaps[0].duration, 1, "Overlap duration should be measured in seconds");
 
 const mixedAnalysis = analyze(parseSrt(`1\n00:00:00,000 --> 00:00:03,000\n你好 hello world\n\n2\n00:00:03,500 --> 00:00:06,500\n继续 testing`));
 assert.equal(mixedAnalysis.language, "mixed");
 assert.equal(mixedAnalysis.totals.pausePer100, null, "Mixed language must not expose one combined pause frequency");
 assert.equal(mixedAnalysis.variation.primaryRateStdDev, 0, "Mixed language must not select one primary rate");
+
+const zhDominant = analyze(parseSrt(`1\n00:00:00,000 --> 00:00:03,000\n今天我们用 AI 做字幕\n\n2\n00:00:03,200 --> 00:00:06,000\n然后导出 JSON 给工作流`));
+assert.equal(zhDominant.language, "zh", "A Chinese script with product terms should remain Chinese-led");
+assert.equal(zhDominant.languageDetail, "zh-dominant");
+assert.ok(zhDominant.totals.chineseCpmActive > 0);
+
+const malformed = parseSrtDetailed(`A-17\n00:00:00,000 --> 00:00:02,000\nValid cue\n\nB-18\nnot a timestamp\nBroken cue\n\nC-19\n00:00:04,000 --> 00:00:03,000\nBackwards cue`);
+assert.equal(malformed.parsedCueCount, 1);
+assert.equal(malformed.skippedBlockCount, 2, "Malformed SRT blocks must be reported instead of silently discarded");
+assert.equal(malformed.cues[0].originalCueId, "A-17", "Preserve source cue IDs for traceability");
+assert.equal(malformed.warnings[0].cueId, "B-18", "Warnings should preserve an identifiable source cue when possible");
+
+for (const [duration, type] of [[0.495, "short"], [0.995, "medium"], [2.995, "long"]]) {
+  const startMs = 1000 + Math.round(duration * 1000);
+  const start = `00:00:${String(Math.floor(startMs / 1000)).padStart(2, "0")},${String(startMs % 1000).padStart(3, "0")}`;
+  const boundary = analyze(parseSrt(`1\n00:00:00,000 --> 00:00:01,000\nFirst\n\n2\n${start} --> 00:00:05,000\nSecond`));
+  assert.equal(boundary.pauses[0].type, type, `${duration}s must land in exactly one pause band`);
+}
 
 // ── Local PCM audio QC ───────────────────────────────────
 const pcm = new Float32Array([0, 0.5, -0.5, 1, -1, 0, 0, 0]);
@@ -93,6 +115,8 @@ assert.equal(compareRange(170, { min: 150, max: 180 }).status, "ok");
 assert.equal(compareRange(200, { min: 150, max: 180 }).status, "high");
 assert.equal(compareRange(120, { min: 150, max: 180 }).status, "low");
 assert.equal(compareRange(null, { min: 150, max: 180 }).status, "n/a");
+assert.equal(compareRange("40%", { min: 15, max: 30 }).status, "n/a", "Formatted percentage text must not pass a numeric benchmark");
+assert.equal(compareRange(40, { min: 15, max: 30 }).status, "high");
 
 // ── Mixed language counting ──────────────────────────────
 const mixed = countText("这是 English 混合 text");
@@ -106,4 +130,15 @@ assert.equal(
   "Subtitle text must be encoded before HTML rendering"
 );
 
-console.log("rhythm-analyzer: public-beta tests passed (4 fixtures, 25 assertions)");
+// ── Canonical iteration-package fixture ─────────────────
+const packageExample = JSON.parse(fs.readFileSync(new URL("../examples/voice-iteration-package.example.json", import.meta.url), "utf8"));
+assert.equal(packageExample.format, "voxr.voice-iteration-package");
+assert.equal(packageExample.version, 1);
+assert.equal(packageExample.workflow, "voiceover-rhythm-iteration");
+assert.ok(packageExample.source && "audioAuthorizationConfirmed" in packageExample.source);
+assert.ok(Array.isArray(packageExample.priorities));
+assert.ok("recommendation" in packageExample.priorities[0]);
+assert.equal(packageExample.measurements.languageDetail, "zh-dominant");
+assert.ok(fs.existsSync(new URL("../schemas/voxr.voice-iteration-package.schema.json", import.meta.url)), "Schema must ship with the example");
+
+console.log("voxr: reliability tests passed");

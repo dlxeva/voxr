@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/dlxeva/voxr/blob/main/schemas/voxr.voice-iteration-package.schema.json",
+  "title": "Voxr Voice Iteration Package",
+  "description": "A bounded handoff from local SRT/audio review to an authorized voiceover iteration workflow.",
+  "type": "object",
+  "required": ["format", "version", "workflow", "generatedAt", "purpose", "source", "inputBoundary", "profile", "timeline", "measurements", "priorities", "audioQC"],
+  "properties": {
+    "format": { "const": "voxr.voice-iteration-package" },
+    "version": { "const": 1 },
+    "workflow": { "const": "voiceover-rhythm-iteration" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "purpose": {
+      "type": "object",
+      "required": ["id", "label", "status"],
+      "properties": { "id": { "type": "string" }, "label": { "type": "string" }, "status": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "source": {
+      "type": "object",
+      "required": ["srtFile", "audioIncluded", "audioFile", "audioAuthorizationConfirmed"],
+      "properties": {
+        "srtFile": { "type": ["string", "null"] },
+        "audioIncluded": { "type": "boolean" },
+        "audioFile": { "type": ["string", "null"] },
+        "audioAuthorizationConfirmed": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "inputBoundary": {
+      "type": "object",
+      "required": ["timing", "audio", "excluded"],
+      "properties": { "timing": { "type": "string" }, "audio": { "type": "string" }, "excluded": { "type": "array", "items": { "type": "string" } } },
+      "additionalProperties": false
+    },
+    "profile": { "type": "object" },
+    "parser": { "type": ["object", "null"] },
+    "timeline": {
+      "type": "object",
+      "required": ["firstCueOffset", "lastCueEnd", "subtitleSpan", "subtitleCoverageDuration", "subtitleGapRatio"],
+      "properties": {
+        "firstCueOffset": { "type": ["number", "null"] }, "lastCueEnd": { "type": ["number", "null"] },
+        "subtitleSpan": { "type": "number" }, "subtitleCoverageDuration": { "type": "number" }, "subtitleGapRatio": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "measurements": {
+      "type": "object",
+      "required": ["language", "languageDetail", "languageComposition", "activeRate", "timelineRate", "rateUnit", "pauseCount", "pausePer100", "overlaps"],
+      "properties": {
+        "language": { "type": "string" }, "languageDetail": { "type": "string" }, "languageComposition": { "type": "object" },
+        "activeRate": { "type": ["number", "null"] }, "timelineRate": { "type": ["number", "null"] }, "rateUnit": { "type": ["string", "null"] },
+        "pauseCount": { "type": "number" }, "pausePer100": { "type": ["number", "null"] }, "overlaps": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "priorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["priority", "timecode", "issue", "recommendation", "prompt"],
+        "properties": {
+          "priority": { "type": "number" }, "timecode": { "type": "string" }, "issue": { "type": "string" },
+          "recommendation": { "type": "string" }, "prompt": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "audioQC": { "type": ["object", "null"] }
+  },
+  "additionalProperties": false
+}
