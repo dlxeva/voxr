@@ -9,6 +9,8 @@
 
 [English](README.en.md) · [方法、参考与边界](METHODOLOGY.md) · [Agent Skill](skills/voxr-rhythm-review) · [迭代包 Schema](schemas/voxr.voice-iteration-package.schema.json)
 
+> 设计记录：[VOXR：让 AI 配音可以被逐句审校](https://aizhiz.com/zh/posts/2026-07-29-voiceover-review-layer/) · Write-up: [Review AI voiceover, cue by cue](https://aizhiz.com/posts/2026-07-29-voiceover-review-layer/)
+
 Voxr 是一个面向 AI 合成旁白交付的本地节奏复核工具。它读取 SRT 时间轴，并可选读取一份已获授权的旁白音频，帮助创作者检查节奏、定位建议优先回听的片段，并把可解释的复核依据、JSON 与重配提示词交给下一步 TTS 或剪辑流程。
 
 ## 能做什么
